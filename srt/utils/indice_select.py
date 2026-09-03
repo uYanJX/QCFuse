@@ -205,6 +205,8 @@ class IndiceSelector:
                         is_query=False,
                     )
 
+                # Average normalized attention over query tokens, query heads,
+                # and selected layers before ranking context tokens.
                 importance = compute_att_full_softmax_importance(
                     q_chunk,
                     k_full,

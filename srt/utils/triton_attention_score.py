@@ -2,7 +2,7 @@
 Triton kernels for QCFuse attention-based token selection.
 
 For each candidate KV token, the score is:
-1. max softmax probability over query positions and query heads per layer;
+1. mean softmax probability over query positions and query heads per layer;
 2. mean of that score over selected layers.
 """
 
@@ -256,7 +256,9 @@ def _flash_importance_target_kernel(
                     valid = valid & (offs_n[None, :] <= q_abs[:, None])
 
                 attn_weight = tl.where(valid, attn_weight, 0.0)
-                importance = tl.maximum(importance, tl.max(attn_weight, 0))
+                importance += tl.sum(attn_weight, 0)
+
+    importance = importance / (n_ctx_q * n_heads_q)
 
     out_ptrs = IMPORTANCE + pid_b * stride_imp_b + offs_local * stride_imp_k
     tl.store(out_ptrs, importance, mask=offs_local < target_len)
@@ -289,7 +291,7 @@ def compute_att_full_softmax_importance(
         causal: if true, query i can only attend to K positions <= q_start + i
 
     Returns:
-        importance: [target_len], query/head max followed by layer mean
+        importance: [target_len], mean over query tokens, heads, and layers
     """
     num_layers, seq_q, heads_q, dim = q.shape
     _, seq_k, heads_k, _ = k.shape

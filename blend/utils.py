@@ -1,8 +1,8 @@
 """
-LongBench / RULER utilities for Blend evaluation.
+Dataset utilities for Blend evaluation.
 
-Supports: hotpotqa, 2wikimqa, musique, ruler_vt, ruler_mq, ruler_mv
-Metrics : F-Measure, string-match-all
+Supports: hotpotqa, 2wikimqa, musique, ruler_vt, ruler_mq, ruler_mv, bird
+Metrics : F-Measure, string-match-all, BIRD execution accuracy
 """
 
 import json
@@ -12,6 +12,7 @@ from typing import List, Dict, Tuple
 from rouge_score import rouge_scorer as _rouge_scorer
 
 RULER_DATASETS = ("ruler_vt", "ruler_mq", "ruler_mv")
+STRUCTURED_DATASETS = ("bird",)
 
 SYSTEM_PROMPT = (
     "You are a highly precise question-answering assistant.\n\n"
@@ -98,12 +99,33 @@ RULER_QUERY_PREFIX = {
     ),
 }
 
+BIRD_SYSTEM_PROMPT = (
+    "You are a precise SQLite text-to-SQL assistant.\n\n"
+    "## Task\n"
+    "The context chunks together describe one SQLite database, including "
+    "optional evidence, tables, columns, keys, and descriptions. Write one "
+    "read-only SQLite query (SELECT or WITH ... SELECT) that answers the "
+    "question.\n\n"
+    "## Output Rules\n"
+    "- Output only the executable SQL query.\n"
+    "- Do not output Markdown, code fences, comments, or explanations.\n"
+    "- Use only tables and columns shown in the context.\n"
+    "- Treat Evidence as a hint for interpreting the question.\n\n"
+    "## Database Context\n"
+)
+
+BIRD_QUERY_PREFIX = (
+    "Use all database-context chunks above to write the SQLite query."
+    "\n\n## Question\n"
+)
+
 MAX_NEW_TOKENS = 48
 
 MAX_NEW_TOKENS_BY_DATASET = {
     "ruler_vt": 30,
     "ruler_mq": 128,
     "ruler_mv": 128,
+    "bird": 512,
 }
 
 DEFAULT_CHUNK_TOPK = 20
@@ -137,6 +159,10 @@ def build_prompt_for_dataset(
         q_prompt: [query_prefix, input_text]
     """
     context = example.get("context", "")
+    if dataset_name in STRUCTURED_DATASETS:
+        docs = [f"Schema chunk:\n{ctx}\n\n" for ctx in context]
+        return docs, [BIRD_QUERY_PREFIX, example.get("input", "")]
+
     if dataset_name not in RULER_DATASETS:
         context = context[: min(len(context), DEFAULT_CHUNK_TOPK)]
     docs = [f"Passage:\n{ctx}\n\n" for ctx in context]
@@ -172,11 +198,13 @@ TASK_METRICS = {
     "ruler_vt": "string_match_all",
     "ruler_mq": "string_match_all",
     "ruler_mv": "string_match_all",
+    "bird": "execution_accuracy",
 }
 
 METRIC_DISPLAY = {
     "f1": "F1",
     "string_match_all": "sm",
+    "execution_accuracy": "EX",
 }
 
 
@@ -188,6 +216,8 @@ def evaluate_sample(
     """Evaluate prediction against ground truths; returns max score."""
     if not ground_truths:
         return 0.0
+    if dataset_name in STRUCTURED_DATASETS:
+        raise ValueError("bird requires the official execution-accuracy evaluator")
     metric_type = TASK_METRICS.get(dataset_name, "f1")
     if metric_type == "string_match_all":
         return scorer_string_match_all(prediction, ground_truths)
@@ -201,6 +231,8 @@ def evaluate_sample(
 
 
 def get_system_prompt(_dataset_name: str) -> str:
+    if _dataset_name == "bird":
+        return BIRD_SYSTEM_PROMPT
     return RULER_SYS_INSTRUCT.get(_dataset_name, SYSTEM_PROMPT)
 
 

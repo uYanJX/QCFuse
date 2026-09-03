@@ -101,6 +101,7 @@ class SSDPipelineEngine(BlendEngineBase):
         digest_index_method: str = DIGEST_INDEX_METHOD,
         digest_ratio: float = DIGEST_RATIO,
         context_cache_source: str = "none",
+        sample_evaluator=None,
     ):
         super().__init__(model_path, baseline)
         self.context_enhance = context_enhance
@@ -109,6 +110,7 @@ class SSDPipelineEngine(BlendEngineBase):
         self.digest_ratio = digest_ratio
         self.context_cache_source = context_cache_source
         self.critical_layer_topk = DEFAULT_CRITICAL_LAYERS
+        self.sample_evaluator = sample_evaluator
 
         self.cache_dir = cache_dir
 
@@ -333,11 +335,18 @@ class SSDPipelineEngine(BlendEngineBase):
         sample: SSDSample,
         dataset_name: str,
     ) -> float:
-        score = evaluate_sample(
-            result["text"],
-            sample.answers,
-            dataset_name,
-        )
+        if self.sample_evaluator is None:
+            score = evaluate_sample(
+                result["text"],
+                sample.answers,
+                dataset_name,
+            )
+        else:
+            score = self.sample_evaluator.score(
+                sample.idx,
+                result["text"],
+                sample.answers,
+            )
         bucket["ttft"].append(result["ttft"])
         bucket["metric"].append(score)
         return score
@@ -494,7 +503,7 @@ def main():
         choices=SUPPORTED_BASELINES,
         help="Baseline to run: fullcomp, ours, fuserag, or prophetkv",
     )
-    parser.add_argument("--size", type=int, default=200)
+    parser.add_argument("--size", type=int, default=500)
     parser.add_argument(
         "--dataset",
         type=str,
@@ -514,6 +523,30 @@ def main():
         "--cache_dir", type=str, default="cache/qcfuse",
         help="Base SSD directory for KV cache storage",
     )
+    parser.add_argument(
+        "--bird_data",
+        "--bird-data",
+        dest="bird_data",
+        type=str,
+        default=None,
+        help="Official 500-row BIRD mini_dev_sqlite.json",
+    )
+    parser.add_argument(
+        "--bird_db_root",
+        "--bird-db-root",
+        dest="bird_db_root",
+        type=str,
+        default=None,
+        help="Directory containing the official BIRD Mini-Dev SQLite databases",
+    )
+    parser.add_argument(
+        "--structured_eval_timeout",
+        "--structured-eval-timeout",
+        dest="structured_eval_timeout",
+        type=float,
+        default=30.0,
+        help="Per-sample BIRD SQL execution timeout in seconds",
+    )
     args = parser.parse_args()
 
     data_dir = Path(args.data_dir)
@@ -530,6 +563,17 @@ def main():
     origin_dataset = load_dataset(str(dataset_path))
     dataset = origin_dataset[: min(args.size, len(origin_dataset))]
     metric_name = get_metric_name(dataset_name)
+    sample_evaluator = None
+    if dataset_name == "bird":
+        from structured_eval import create_bird_evaluator
+
+        sample_evaluator = create_bird_evaluator(
+            dataset,
+            data_dir,
+            bird_data=args.bird_data,
+            bird_db_root=args.bird_db_root,
+            timeout_s=args.structured_eval_timeout,
+        )
 
     with SSDPipelineEngine(
         model_path,
@@ -539,6 +583,7 @@ def main():
         digest_index_method=DIGEST_INDEX_METHOD,
         digest_ratio=DIGEST_RATIO,
         context_cache_source="none",
+        sample_evaluator=sample_evaluator,
     ) as engine:
         engine.warmup(num_warmup=3)
         engine.set_baseline(args.baseline)

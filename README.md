@@ -12,12 +12,18 @@
 </table>
 
 
-QCFuse is a **pipeline-constrained, query-aware KV cache fusion** system for efficient long-context RAG generation. This repository contains the QCFuse research artifact described in [arXiv:2606.05875](http://arxiv.org/abs/2606.05875).
+QCFuse is a **compressed-view, query-aware KV cache fusion** system for
+efficient long-context RAG generation. It uses compact cached chunk anchors to
+condition the query, scores every original context position at profiled layers,
+and preserves the layer-wise cache-fusion pipeline. This repository contains
+the QCFuse research artifact described in
+[arXiv:2606.05875](http://arxiv.org/abs/2606.05875).
 
 ## 🔥 News
 
+- **2026.09.02** 🚀 We expanded every workload to 500 examples in the [QCFuse dataset](https://huggingface.co/datasets/Yjx666/qcfuse-dataset) and added [BIRD](https://bird-bench.github.io/), a new text-to-SQL evaluation workload.
 - **2026.06.26** 🚀 QCFuse supports Qwen3-32B and evaluates Qwen3-8B/14B/32B reconstruction on LongBench under 5K context; see [results](md/qwen3_all_models_dataset_ttft_f1.png).
-- **2026.06.02** 🚀 QCFuse released code and datasets, with SGLang integration and Triton-accelerated sparse reconstruction attention.
+- **2026.06.02** 🚀 QCFuse released its SGLang integration and Triton-accelerated sparse reconstruction attention.
 
 ## ✨ Highlights
 
@@ -29,22 +35,27 @@ QCFuse is a **pipeline-constrained, query-aware KV cache fusion** system for eff
   <em>QCFuse builds a compact query-aware view for pipelined cache fusion in RAG serving.</em>
 </p>
 
-- **Query-aware compressed view.** Cuts selector time and selection noise while
-  preserving pipeline efficiency.
+- **Compressed-view query-aware selection.** Reuses compact cached anchors from
+  each retrieved chunk to condition queries, then scores all context positions
+  using only profiled critical layers.
 - **Pipeline-aware SGLang system.** Adds SSD-backed PIC cache transfer and
   Triton sparse reconstruction attention without materializing extra attention
   masks.
-- **Matched-quality speedup.** Reaches **1.7x** average prefill speedup over
-  full prefill and **1.5x** over ProphetKV.
+- **Smaller pre-fusion state view.** Reduces the context-dependent selector cost
+  and KV state required before layer-wise fusion can begin.
+- **Near-reference quality at lower TTFT.** Across five open-weight LLMs and
+  seven workloads, reaches a **1.73x** TTFT speedup over Full Prefill
+  (`fullcomp`) with less than a **1% drop in aggregate quality**, and up to
+  **1.48x** over ProphetKV at matched aggregate quality.
 
 ## 📊 Results
 
 <p align="center">
-  <img src="md/benchmark_aggregate.png" alt="Quality and TTFT trade-off on LongBench and RULER" width="55%">
+  <img src="md/benchmark_aggregate.png" alt="Synchronized TTFT breakdown and aggregate quality trade-off" width="55%">
 </p>
 
 <p align="center">
-  <em>Quality and TTFT trade-off on LongBench and RULER. Transfer bandwidth affects the TTFT of KV cache fusion methods; paper experiments use 10GB/s.</em>
+  <em>Synchronized TTFT breakdown and aggregate quality trade-off. At its highest-quality point, QCFuse is 1.73x faster than Full Prefill (fullcomp) while keeping the aggregate-quality drop below 1%; at matched aggregate quality, it reaches up to 1.48x speedup over ProphetKV.</em>
 </p>
 
 ## 🗂️ Repository Layout
@@ -55,6 +66,7 @@ QCFuse/
 │   ├── sglang_blend_ssd.py
 │   ├── blend_common.py
 │   ├── qcfuse_config.py
+│   ├── structured_eval.py
 │   └── utils.py
 ├── srt/                           # SGLang runtime changes for QCFuse
 │   ├── entrypoints/
@@ -62,30 +74,45 @@ QCFuse/
 │   ├── layers/attention/
 │   ├── models/
 │   └── utils/
-├── data/                          # Packaged evaluation data
-│   └── qcfuse_data.zip
+├── data/                          # Dataset instructions and local download target
+│   └── README.md
 ```
 
 ## 🗄️ Datasets
 
-The evaluation data is provided as `data/qcfuse_data.zip`. It contains six
-ready-to-run JSONL files derived from LongBench and RULER. Each dataset has
-200 samples.
+The revised evaluation covers **seven workloads** across multi-hop QA,
+long-context retrieval and tracking, and text-to-SQL. Each workload contains
+500 paired examples, and retrieved contexts average about 10K tokens.
 
-Extract the archive in the repository root:
+The prepared QCFuse data is hosted at
+[Yjx666/qcfuse-dataset](https://huggingface.co/datasets/Yjx666/qcfuse-dataset).
+Download the seven JSONL files into `data/` with:
 
 ```bash
-unzip data/qcfuse_data.zip -d data
+pip install -U huggingface_hub
+hf download Yjx666/qcfuse-dataset \
+  --repo-type dataset \
+  --include "*.jsonl" \
+  --local-dir data
+```
+
+The resulting directory should contain:
+
+```text
+data/
+├── musique.jsonl
+├── 2wikimqa.jsonl
+├── hotpotqa.jsonl
+├── ruler_mq.jsonl
+├── ruler_mv.jsonl
+├── ruler_vt.jsonl
+└── bird.jsonl
 ```
 
 The evaluation runner expects each split as `{dataset}.jsonl` under
-`--data_dir`; use `--data_dir data` after extraction. See
-[data/README.md](data/README.md) for the packaged data layout.
-
-| Benchmark | Official source | Tasks used in this artifact |
-| --- | --- | --- |
-| LongBench | [THUDM/LongBench](https://github.com/THUDM/LongBench) | `musique`, `2wikimqa`, `hotpotqa` |
-| RULER | [NVIDIA/RULER](https://github.com/NVIDIA/RULER) | `ruler_mv` (`MV`), `ruler_mq` (`MQ`), `ruler_vt` (`VT`) |
+`--data_dir`; use `--data_dir data` after downloading. See
+[data/README.md](data/README.md) for the data layout and BIRD evaluation
+requirements.
 
 ## ⚙️ Installation
 
@@ -121,7 +148,7 @@ python blend/sglang_blend_ssd.py \
   --data_dir data \
   --dataset hotpotqa \
   --baseline ours \
-  --size 200 \
+  --size 500 \
   --cache_dir cache/qcfuse
 ```
 
@@ -138,7 +165,7 @@ python blend/sglang_blend_ssd.py \
   --data_dir data \
   --dataset hotpotqa \
   --baseline fullcomp \
-  --size 200 \
+  --size 500 \
   --cache_dir cache/qcfuse
 ```
 
