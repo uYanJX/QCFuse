@@ -11,13 +11,17 @@
   </tr>
 </table>
 
+<p align="center">
+  <a href="https://arxiv.org/abs/2606.05875"><img src="https://img.shields.io/badge/arXiv-2606.05875-b31b1b.svg" alt="arXiv"></a>
+  <a href="https://github.com/sgl-project/sglang/releases/tag/v0.5.4"><img src="https://img.shields.io/badge/SGLang-v0.5.4-blue.svg" alt="SGLang v0.5.4"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="Apache License 2.0"></a>
+</p>
 
 QCFuse is a **compressed-view, query-aware KV cache fusion** system for
 efficient long-context RAG generation. It uses compact cached chunk anchors to
 condition the query, scores every original context position at profiled layers,
 and preserves the layer-wise cache-fusion pipeline. This repository contains
-the QCFuse research artifact described in
-[arXiv:2606.05875](http://arxiv.org/abs/2606.05875).
+the research artifact described in the QCFuse paper.
 
 ## 🔥 News
 
@@ -185,3 +189,9 @@ If you find QCFuse useful, please cite:
       url={https://arxiv.org/abs/2606.05875},
 }
 ```
+
+## Acknowledgements
+
+This project builds on top of [SGLang](https://github.com/sgl-project/sglang).
+We thank the SGLang team for their excellent open-source inference engine.
+
