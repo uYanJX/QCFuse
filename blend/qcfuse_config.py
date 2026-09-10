@@ -1,7 +1,7 @@
 """QCFuse configuration for the SSD-backed blend runner."""
 
 DIGEST_INDEX_METHOD = "kvzip"
-DIGEST_RATIO = 0.1
+DIGEST_RATIO = 0.15
 DEFAULT_BLEND_RATIO = 0.5
 DEFAULT_CONTEXT_N_SINK = 4
 DEFAULT_CRITICAL_LAYERS = 3

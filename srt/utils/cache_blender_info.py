@@ -4,7 +4,7 @@ import torch
 from dataclasses import dataclass
 
 
-DEFAULT_DIGEST_RATIO = 0.1
+DEFAULT_DIGEST_RATIO = 0.15
 
 
 class BlendStyle(Enum):
