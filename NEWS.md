@@ -1,17 +1,25 @@
 # 🔥 News
 
+- **2026.10.02** 🚀 Qwen3-32B reasoning evaluation with Thinking enabled on HotpotQA, 2WikiMQA, and MuSiQue reports F-score and TTFT results for FullComp, Ours, and ProphetKV.
 - **2026.10.02** 🚀 QCFuse is compatible with Huawei's [Unified Cache Management (UCM)](https://github.com/uYanJX/ucm-qcfuse) framework and supports multi-batch inference.
-- **2026.10.02** 🚀 Qwen3-32B reasoning evaluation on HotpotQA and 2WikiMQA reports FullComp, Ours, and ProphetKV results at blend ratios 0.4 and 0.5.
 
-## Qwen3-32B results
+## Qwen3-32B results — Thinking: Enabled
 
-Percentages are relative F-score changes from FullComp within the same dataset and thinking setting.
+Percentages are relative F-score changes from FullComp. The aggregate row is the unweighted mean over the three QA workloads, with its percentage calculated as the mean of the three dataset-level relative changes.
 
-| Dataset | Thinking | FullComp | Ours @ 0.4 | Ours @ 0.5 | ProphetKV @ 0.4 | ProphetKV @ 0.5 |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| HotpotQA | Disabled | 0.6549 <small>(baseline)</small> | 0.6454 <small>(−1.45%)</small> | 0.6510 <small>(−0.60%)</small> | 0.6398 <small>(−2.31%)</small> | 0.6493 <small>(−0.86%)</small> |
-| HotpotQA | Enabled | 0.6956 <small>(baseline)</small> | 0.6946 <small>(−0.14%)</small> | 0.6863 <small>(−1.34%)</small> | 0.6911 <small>(−0.65%)</small> | 0.6829 <small>(−1.83%)</small> |
-| 2WikiMQA | Disabled | 0.5153 <small>(baseline)</small> | 0.5105 <small>(−0.93%)</small> | 0.5210 <small>(+1.11%)</small> | 0.5130 <small>(−0.45%)</small> | 0.5120 <small>(−0.64%)</small> |
-| 2WikiMQA | Enabled | 0.6174 <small>(baseline)</small> | 0.5906 <small>(−4.34%)</small> | 0.6211 <small>(+0.60%)</small> | 0.5886 <small>(−4.66%)</small> | 0.5983 <small>(−3.09%)</small> |
+| Dataset | FullComp | Ours @ 0.5 | ProphetKV @ 0.5 |
+| --- | ---: | ---: | ---: |
+| HotpotQA | 0.6956 <small>(baseline)</small> | 0.6863 <small>(−1.34%)</small> | 0.6829 <small>(−1.83%)</small> |
+| 2WikiMQA | 0.6174 <small>(baseline)</small> | 0.6211 <small>(+0.60%)</small> | 0.5983 <small>(−3.09%)</small> |
+| MuSiQue | 0.4147 <small>(baseline)</small> | 0.4266 <small>(+2.87%)</small> | 0.4239 <small>(+2.22%)</small> |
+| Aggregate (3 QA) | 0.5759 <small>(baseline)</small> | 0.5780 <small>(+0.71%)</small> | 0.5684 <small>(−0.90%)</small> |
 
-All entries use 500 valid examples.
+QCFuse at blend ratio 0.5 achieves the highest aggregate F-score (0.5780, +0.71% vs. FullComp) with a 1.81× TTFT speedup.
+
+## TTFT speedup
+
+| Scope | FullComp | Ours @ 0.5 | ProphetKV @ 0.5 |
+| --- | ---: | ---: | ---: |
+| Aggregate (3 QA) | 1.00× | 1.81× | 1.65× |
+
+All entries use 500 valid examples and TopK=20.

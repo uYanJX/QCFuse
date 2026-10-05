@@ -25,9 +25,9 @@ the research artifact described in the QCFuse paper.
 
 ## 🔥 News
 
-- **2026.09.02** 🚀 We expanded every workload to 500 examples in the [QCFuse dataset](https://huggingface.co/datasets/Yjx666/qcfuse-dataset) and added [BIRD](https://bird-bench.github.io/), a new text-to-SQL evaluation workload.
+- **2026.10.02** 🚀 Qwen3-32B Thinking-enabled evaluation on HotpotQA, 2WikiMQA, and MuSiQue compares FullComp, QCFuse, and ProphetKV at blend ratio 0.5 using F-score and TTFT; see [NEWS.md](NEWS.md).
 - **2026.10.02** 🚀 QCFuse is compatible with Huawei's [Unified Cache Management (UCM)](https://github.com/uYanJX/ucm-qcfuse) framework and supports multi-batch inference.
-- **2026.10.02** 🚀 Qwen3-32B reasoning evaluation on HotpotQA and 2WikiMQA keeps selected configurations within 1% relative F-score of full computation; see [NEWS.md](NEWS.md).
+- **2026.09.02** 🚀 We expanded every workload to 500 examples in the [QCFuse dataset](https://huggingface.co/datasets/Yjx666/qcfuse-dataset) and added [BIRD](https://bird-bench.github.io/), a new text-to-SQL evaluation workload.
 - **2026.06.26** 🚀 QCFuse supports Qwen3-32B and evaluates Qwen3-8B/14B/32B reconstruction on LongBench under 5K context; see [results](md/qwen3_all_models_dataset_ttft_f1.png).
 - **2026.06.02** 🚀 QCFuse released its SGLang integration and Triton-accelerated sparse reconstruction attention.
 
@@ -196,4 +196,3 @@ If you find QCFuse useful, please cite:
 
 This project builds on top of [SGLang](https://github.com/sgl-project/sglang).
 We thank the SGLang team for their excellent open-source inference engine.
-
